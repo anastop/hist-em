@@ -1,0 +1,241 @@
+package main
+
+import (
+  "net/http"
+  "strings"
+  "encoding/json"
+  "github.com/go-redis/redis"
+  "time"
+  "os/exec"
+  "log"
+  "fmt"
+  "bufio"
+  "regexp"
+)
+
+type Name struct {
+  Type string `json:"type"`
+}
+
+type Timestamp struct {
+  Type string `json:"type"`
+}
+
+type Properties struct {
+  Name `json:"name"`
+  Timestamp `json:"@timestamp"`
+}
+
+type Doc struct {
+  Properties `json:"properties"`
+}
+
+type Mappings struct {
+  Doc `json:"doc"`
+}
+
+type Lakis struct {
+  Mappings `json:"mappings"`
+}
+
+type MappingResponse struct {
+  Lakis `json:"lakis"`
+}
+
+type Shards struct {
+  Total      int `json:"total"`
+  Successful int `json:"successful"`
+  Skipped    int `json:"skipped"`
+  Failed     int `json:"failed"`
+}
+
+type Hits struct {
+  Total    int           `json:"total"`
+  MaxScore float64       `json:"max_score"`
+  Hits     []int         `json:"hits"`
+}
+
+type Num2Bucket struct {
+  KeyAsString string `json:"key_as_string"`
+  Key         int    `json:"key"`
+  DocCount    int    `json:"doc_count"`
+}
+
+type Num2 struct {
+  Buckets []Num2Bucket `json:"buckets"`
+}
+
+type Num3Bucket struct {
+  Num2 `json:"2"`
+  Key      int `json:"key"`
+  DocCount int `json:"doc_count"`
+}
+
+type Num3 struct {
+  Buckets []Num3Bucket `json:"buckets"`
+}
+
+type Aggregations struct {
+  Num3 `json:"3"`
+}
+
+type EsResponse struct {
+  Took int `json:"took"`
+  TimedOut bool `json:"timed_out"`
+  Shards `json:"_shards"`
+  Hits `json:"hits"`
+  Aggregations `json:"aggregations"`
+  Status int `json:"status"`
+}
+
+type DataSearchResponse struct {
+  Responses []EsResponse `json:"responses"`
+}
+
+
+func sayHello(w http.ResponseWriter, r *http.Request) {
+  message := r.URL.Path
+  message = strings.TrimPrefix(message, "/")
+  message = "Hello " + message
+
+  w.Write([]byte(message))
+}
+
+func getMapping(w http.ResponseWriter, r *http.Request) {
+  mapping := &MappingResponse {
+    Lakis: Lakis {
+        Mappings: Mappings {
+          Doc: Doc {
+            Properties: Properties {
+              Name: Name {
+                Type: "text",
+              },
+              Timestamp: Timestamp {
+                Type: "date",
+              },
+            },
+          },
+        },
+    },
+  }
+
+  js, err := json.Marshal(mapping)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+
+  w.Header().Set("Content-Type", "application/json")
+  w.Write(js)
+}
+
+func writeDataToRedis() {
+  mock_shards := Shards{
+    Total: 1,
+    Successful: 1,
+    Skipped: 0,
+    Failed: 0,
+  }
+  empty_hits := []int{}
+  mock_hits := Hits{
+    Total: 4242,
+    MaxScore: 0.0,
+    Hits: empty_hits,
+  }
+
+  mock_2_buckets := []Num2Bucket {
+    Num2Bucket {
+      KeyAsString: "12154641",
+      Key: 454654465,
+      DocCount: 34,
+    },
+  }
+
+  mock_num_2 := Num2{
+    Buckets: mock_2_buckets,
+  }
+
+  mock_3_buckets := []Num3Bucket {
+    Num3Bucket {
+      Num2: mock_num_2,
+      Key: 3000,
+      DocCount: 34,
+    },
+  }
+
+  mock_aggregations := Aggregations{
+    Num3: Num3 {
+      Buckets: mock_3_buckets,
+    },
+  }
+
+  response:= &DataSearchResponse {
+    Responses:  []EsResponse {
+      EsResponse{
+        Took: 14,
+        TimedOut: false,
+        Shards: mock_shards,
+        Hits: mock_hits,
+        Status: 200,
+        Aggregations: mock_aggregations,
+      },
+    },
+  }
+
+  js, err := json.Marshal(response)
+  if err != nil {
+    panic(err)
+    return
+  }
+
+  client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+  })
+  err = client.Set("agg_data", js, 0).Err()
+  if err != nil {
+    panic(err)
+  }
+}
+
+func esDeamon(){
+  for {
+    writeDataToRedis()
+    time.Sleep(time.Second * 5)
+  }
+}
+
+
+func main() {
+
+  // var wg sync.WaitGroup
+  // go esDeamon()
+  cmd := exec.Command("/home/nfvacc/bcc/tools/runqlat.py", "2", "1")
+  stdout, err := cmd.StdoutPipe()
+  if err != nil {
+    log.Fatal(err)
+  }
+  in := bufio.NewScanner(stdout)
+
+  err = cmd.Start()
+  if err != nil {
+    log.Fatal(err)
+  }
+
+  time.Sleep(time.Second * 5)
+
+  count := 0
+  for in.Scan() {
+      line := in.Text()
+      count++
+      if count > 3 {
+          s := strings.Split(line, "|")
+          s2 := strings.Split(s[0], ":")
+          s3 := strings.Split(s2[0], "->")
+          re := regexp.MustCompile("[0-9]+")
+          value := re.FindAllString(s3[1], -1)[0]
+          fmt.Println(value)
+      }
+  }
+}
