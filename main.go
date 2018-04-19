@@ -26,7 +26,7 @@ type histogram struct {
 
 
 func run_cyclictest() *exec.Cmd{
-  cmd := exec.Command("sh", "-c", "./cyclictest -l1000 -h100 > outputGo")
+  cmd := exec.Command("sh", "-c", "./cyclictest -D3 -h100 > outputGo")
   err := cmd.Start()
   if err != nil {
     log.Fatal(err)
