@@ -26,7 +26,7 @@ type histogram struct {
 
 
 func run_cyclictest() *exec.Cmd{
-  cmd := exec.Command("sh", "-c", "./cyclictest -D3 -h100 > outputGo")
+  cmd := exec.Command("sh", "-c", "./cyclictest -q -D2 -h100 > outputGo")
   err := cmd.Start()
   if err != nil {
     log.Fatal(err)
@@ -83,6 +83,7 @@ func parse_cyclictest_results() histogram{
     histArr = append(histArr, histogramColumn{Value: s[0], Count: s[1]})
   }
   histArray.Histogram = histArr
+  fmt.Println()
   return histArray
 }
 

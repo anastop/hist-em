@@ -27,7 +27,7 @@ def print_hist():
 	if tm == 0 or occs == 0:
 	    continue
 	final_array.extend([tm for _ in range(occs)])
-    count, division = np.histogram(final_array)
+    count, division = np.histogram(final_array, bins=20, range=(0.0, 100.0))
     for idx, _ in enumerate(count):
         print int(division[idx]), count[idx]
 

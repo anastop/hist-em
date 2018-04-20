@@ -7,6 +7,7 @@ import (
 	"time"
 	"log"
 	"fmt"
+        "encoding/json"
 	"io/ioutil"
 )
 
@@ -16,7 +17,7 @@ func writetoRedis(rediskey string , redisVal string){
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
-	})	
+	})
 	fmt.Println(redisVal)
 
 	llength, _ := client.LLen(rediskey).Result()
@@ -40,20 +41,32 @@ func main() {
 	}
 }
 
+
+type CollectorData struct {
+  Timestamp int64        `json:"timestamp"`
+  Data      json.RawMessage  `json:"data"`
+}
+
 func collect(user, host, service, app string) {
 	url := "http://167.99.213.33:9000/v1/data"
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Fatal(err)
+          log.Fatal(err)
 	}
 	responsedata, errori := ioutil.ReadAll(resp.Body)
 	if errori != nil {
-	   log.Fatal(err)
+	  log.Fatal(errori)
 	}
 	rediskey := fmt.Sprintf("heatmaps:%s:%s:%s:%s:latency", user, host, service, app)
     //b, erro := json.Marshal(resp)
 	fmt.Println(string(responsedata))
-	writetoRedis(rediskey, string(responsedata))
+
+        m := CollectorData{Data: responsedata, Timestamp: time.Now().Unix()}
+        data, errorios := json.Marshal(m)
+        if errorios != nil {
+          log.Fatal(errorios)
+        }
+        writetoRedis(rediskey, string(data))
 
 }
 
