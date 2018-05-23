@@ -1,7 +1,7 @@
 # hist-em
 
 Implements a Histogram EM example.
-Internally this element manager consists of a web server that wraps the execution of a [cyclictest](https://github.com/LITMUS-RT/cyclictest), providing endpoints for starting, stoping Cyclictest and getting statists.
+Internally this element manager consists of a web server that wraps the execution of a [cyclictest](https://wiki.linuxfoundation.org/realtime/documentation/howto/tools/rt-tests#compile-and-install), providing endpoints for starting, stoping Cyclictest and getting statists.
 
 
 
