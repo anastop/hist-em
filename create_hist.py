@@ -14,19 +14,19 @@ def print_hist():
     values = []
     for l in lines:
         if 'Total' in l:
-	    break
-	if start_hist:
+            break
+        if start_hist:
             values.append(l)
-	if 'Histogram' in l:
-	    start_hist = True
+        if 'Histogram' in l:
+            start_hist = True
 
     final_array = []
     for val in values:
         _l = val.split(' ')
-	tm, occs = int(_l[0]), int(_l[1])
-	if tm == 0 or occs == 0:
-	    continue
-	final_array.extend([tm for _ in range(occs)])
+        tm, occs = int(_l[0]), int(_l[1])
+        if tm == 0 or occs == 0:
+           continue
+        final_array.extend([tm for _ in range(occs)])
     count, division = np.histogram(final_array, bins=20, range=(0.0, 100.0))
     for idx, _ in enumerate(count):
         print int(division[idx]), count[idx]
