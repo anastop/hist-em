@@ -130,7 +130,7 @@ func HTTPStartHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-
+	go startCyclictest()
 	http.HandleFunc("/v1/data", HTTPDataHandler)
 	http.HandleFunc("/v1/start", HTTPStartHandler)
 	http.HandleFunc("/v1/stop", HTTPStopHandler)
